@@ -1,61 +1,183 @@
-# Distributed Systems Playground
+# 🌐 Distributed Systems Playground
 
-An advanced interactive web simulator designed to visualize and experiment with core distributed systems concepts in real-time. This playground helps engineers and developers understand how load balancing, replication, sharding, and fault tolerance function through intuitive visual animations and logging.
+[![React](https://img.shields.io/badge/React-18.x-61DAFB?logo=react)](https://reactjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript)](https://www.typescriptlang.org/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.x-38B2AC?logo=tailwind-css)](https://tailwindcss.com/)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
----
-
-## ◈ Implemented Concepts & Architecture
-
-The application has been audited and refactored to ensure the theoretical distributed systems algorithms are 100% accurate, safe, and performant under React 18+ specifications.
-
-### 1. Fault Tolerance Engine
-A resilient client wrapper manages request retries and node failure recovery:
-*   **Circuit Breaker State Machine:** Implements three states:
-    *   `CLOSED`: Normal operational mode where requests are routed to healthy nodes.
-    *   `OPEN`: Activated after 3 consecutive failures. In this state, the circuit trips, failing fast to protect backend services and serving fallback data instantly.
-    *   `HALF-OPEN`: After a 10-second timeout, the circuit enters a probing state. If the next request succeeds, it transitions back to `CLOSED`. If it fails, it immediately re-trips to `OPEN`.
-*   **Exponential Backoff:** When a request fails, retries are scheduled with an exponentially increasing delay: `Math.pow(2, attempt) * 1000` (e.g., 2s, 4s, 8s). The retry count resets to 0 upon any successful request.
-*   **Fallback Mechanism:** When the circuit is `OPEN` or all retries are exhausted, the client returns fallback/cached data and triggers a prominent warning badge in the UI instead of crashing.
-
-### 2. Algorithmic Load Balancing
-Routing decisions are decoupled from the UI layer and optimized for performance:
-*   **Round-Robin:** Sequentially cycles requests through healthy nodes, ensuring equal request distribution.
-*   **Least Connections:** Scans healthy nodes in $O(N)$ linear time (rather than $O(N \log N)$ sorting) to find the node with the fewest active connections, breaking ties using CPU load.
-*   **Power of Two Choices (P2C):** Selects exactly two random healthy nodes, compares their load/connections, and routes to the lighter one. Collision handling selects a random secondary index to avoid deterministic routing bias.
-*   **Zero-Node Safe Guard:** Prevents application crashes when all nodes are unhealthy. The router handles empty server pools gracefully, communicating the error to the Fault Tolerance Engine.
-*   **Failure Controls (Kill/Restore):** Each server card is equipped with control buttons to manually toggle its health, simulating server outages and network failures in real-time.
-
-### 3. Data Sharding
-*   **Consistent Hashing Ring:** Replaces standard Mod-N hashing with a consistent hashing ring. By hashing keys and shards onto a circular space using virtual nodes, adding or removing shards requires remapping only a tiny fraction of keys ($1/N$), preventing massive data migration.
-*   **Dynamic Range-Based Sharding:** Automatically partitions keys based on the number of active shards, avoiding hardcoded bounds and mitigating "hot shard" vulnerabilities as data grows.
-
-### 4. Heartbeat (Active Health Check)
-*   Simulates realistic network health probes. A background `setInterval` pings nodes every 5 seconds, introducing a 10% random failure rate to demonstrate network jitter and transient glitches.
+> **An interactive, real-time web simulator for visualizing and experimenting with core distributed systems concepts.**  
+> Built for engineers, developers, and students to understand load balancing, replication, sharding, and fault tolerance through intuitive visualizations, live logging, and hands-on controls.
 
 ---
 
-## 🛠️ Performance & React 18+ Best Practices
+## 📖 Table of Contents
 
-*   **Memory Leak Prevention:** All asynchronous animations and request simulations are clean. Timeouts are scheduled via a tracking reference and cleared inside a `useEffect` cleanup function on component unmount.
-*   **Stable Keys:** Dynamically generated element lists in sharding use stable, unique string keys rather than array indexes, optimizing reconciliation performance.
-*   **Separation of Concerns:** Business logic and mathematical calculations are extracted from the UI components into pure utility modules (`src/utils/loadBalancer.ts`, `src/utils/sharding.ts`), keeping components focused on rendering.
+- [Overview](#-overview)
+- [Key Features](#-key-features)
+- [Implemented Concepts](#-implemented-concepts)
+- [Architecture & Design](#-architecture--design)
+- [Project Structure](#-project-structure)
+- [Getting Started](#-getting-started)
+- [Usage Guide](#-usage-guide)
+- [Technical Stack](#-technical-stack)
+- [Contributing](#-contributing)
+- [License](#-license)
 
 ---
 
-## 📂 Project Directory Structure
+## 🎯 Overview
+
+The **Distributed Systems Playground** is a comprehensive educational tool that brings complex distributed systems theory to life. It simulates production-grade distributed system behaviors in your browser, allowing you to:
+
+- ✅ **Visualize** load balancing algorithms in real-time
+- ✅ **Experiment** with active/passive replication strategies
+- ✅ **Understand** data sharding with consistent hashing
+- ✅ **Observe** fault tolerance mechanisms (Circuit Breakers, Retries, Fallbacks)
+- ✅ **Test** failure scenarios with Kill/Restore controls
+- ✅ **Monitor** system health with heartbeat simulations
+
+---
+
+## ✨ Key Features
+
+| Feature | Description |
+|:---|:---|
+| **🎮 Interactive Controls** | Real-time buttons for sending requests, bursting traffic, and toggling server health |
+| **📊 Live Visualizations** | Animated server cards with CPU load bars, active connection counters, and packet animations |
+| **📝 Activity Logging** | Comprehensive event bus with timestamps and color-coded log levels (info, warn, error, ok) |
+| **🔄 Tab Persistence** | Server states survive tab switches via module-level state management |
+| **🎨 Premium UI** | Glassmorphism design, pulse animations, glow effects, and dark/light mode support |
+| **⚡ Real-time Jitter** | Simulated network jitter (±1% CPU drift) for realistic cluster behavior |
+
+---
+
+## 🧠 Implemented Concepts
+
+### 1. ⚖️ Load Balancing Algorithms
+
+| Algorithm | Description | Best For |
+|:---|:---|:---|
+| **Round-Robin** | Cycles requests sequentially through healthy nodes (A → B → C → A) | Uniform workloads, simple distribution |
+| **Least Connections** | Routes to the node with the fewest active connections; breaks ties with CPU load | Uneven request durations, dynamic workloads |
+| **Power of Two Choices (P2C)** | Randomly selects two nodes and routes to the lighter one; proven near-optimal | Large-scale systems, high throughput |
+
+**Implementation Highlights:**
+- ✅ $O(N)$ linear scan for Least Connections (no expensive sorting)
+- ✅ Unbiased P2C with true random selection (no deterministic bias)
+- ✅ Zero-node safe guard (graceful handling when all nodes are down)
+- ✅ Kill/Restore controls for manual failure simulation
+
+---
+
+### 2. 🔄 Replication Strategies
+
+| Strategy | Description | Use Case |
+|:---|:---|:---|
+| **Active Replication** | All replicas execute every request in sync (State Machine Replication) | Zero-downtime, safety-critical systems |
+| **Passive Replication** | Leader executes requests and ships WAL to followers; automatic leader election on failure | Cost-efficient, general-purpose systems |
+
+**Implementation Highlights:**
+- ✅ Active: All 3 replicas execute transactions simultaneously
+- ✅ Passive: Leader commits → ships WAL → followers apply
+- ✅ Leader Election: Automatic Raft-like election when leader fails
+- ✅ Failover: New leader resumes processing immediately (sub-second)
+
+---
+
+### 3. 🗂️ Data Sharding Strategies
+
+| Strategy | Description | Key Mechanism |
+|:---|:---|:---|
+| **Range-Based Sharding** | Static ranges (1-100 → Shard 1, 101-200 → Shard 2, 201-∞ → Shard 3) | Simple, predictable, but prone to hot shards |
+| **Hash-Based Sharding** | Consistent Hashing Ring with 50 virtual nodes per shard | Uniform distribution, minimal remapping on node changes |
+
+**Implementation Highlights:**
+- ✅ Consistent Hashing Ring with 150 total virtual nodes (50 per shard)
+- ✅ Salt-based node distribution to prevent clustering
+- ✅ Dynamic range partitioning to avoid hardcoded bounds
+- ✅ Visual distribution display with key counts per shard
+
+---
+
+### 4. 🔌 Fault Tolerance Engine
+
+| Component | Description | Behavior |
+|:---|:---|:---|
+| **Circuit Breaker** | Three-state machine (CLOSED → OPEN → HALF-OPEN) | Trips after 3 failures, recovers after 10s |
+| **Exponential Backoff** | `Math.pow(2, attempt) * 1000` ms delays | 1s → 2s → 4s retry intervals |
+| **Fallback Mechanism** | Serves cached/default data when circuit is OPEN | Prevents UI crashes, shows warning badge |
+
+**Implementation Highlights:**
+- ✅ Automatic state transitions with timer-based recovery
+- ✅ Fail-fast behavior when circuit is OPEN (prevents cascading failures)
+- ✅ Clear visual indicators for circuit state and fallback mode
+- ✅ Request success resets retry counter to zero
+
+---
+
+### 5. 🫀 Health Monitoring
+
+| Component | Description |
+|:---|:---|
+| **Heartbeat** | Simulated network ping every 5 seconds |
+| **Jitter Simulation** | ±1% random CPU drift (realistic network variance) |
+| **Visual Indicator** | Animated pulse dot (green = healthy, red = down) |
+
+**Implementation Highlights:**
+- ✅ Independent health checks (not tied to request routing)
+- ✅ 10% random failure rate for realistic network jitter
+- ✅ Proper `setInterval` cleanup on component unmount
+
+---
+
+## 🏗️ Architecture & Design
+
+### React 18+ Best Practices
+
+| Practice | Implementation |
+|:---|:---|
+| **Memory Leak Prevention** | All `setTimeout`/`setInterval` tracked via `useRef` and cleared in `useEffect` cleanup |
+| **Stable Keys** | Dynamic lists use stable string keys (not array indexes) |
+| **Separation of Concerns** | Business logic extracted to `utils/`, components focus on rendering |
+| **Type Safety** | Full TypeScript coverage with strict typing |
+| **State Persistence** | Module-level state survives tab switches |
+
+### Design Patterns
+
+| Pattern | Location | Purpose |
+|:---|:---|:---|
+| **Custom Hooks** | `hooks/useClusterSimulation.ts`, `hooks/useFaultTolerantRequest.ts` | Reusable, isolated logic |
+| **Singleton State** | Module-level `servers` variable | Global state across components |
+| **Observer Pattern** | `subs` Set + `emit()` function | Reactivity without context providers |
+| **Factory Pattern** | `ConsistentHashRing` class | Encapsulates ring logic and virtual nodes |
+
+---
+
+## 📂 Project Structure
 
 ```bash
-src/
-├── hooks/
-│   ├── useClusterSimulation.ts     # Global server cluster states (CPU, connections)
-│   └── useFaultTolerantRequest.ts  # Circuit Breaker, Exponential Backoff, & Fallback hook
-├── utils/
-│   ├── logger.ts                   # Observability log bus
-│   ├── loadBalancer.ts             # Load balancing algorithms (RR, Least-Conn, P2C)
-│   └── sharding.ts                 # Consistent Hash Ring & dynamic range partitioning
-└── components/
-    ├── Heartbeat.tsx               # Periodic network ping simulation
-    ├── LoadBalancerTab.tsx         # Load balancer UI and failure control deck
-    ├── ReplicationTab.tsx          # Active/passive replication simulator
-    └── ShardingTab.tsx             # Consistent hashing and sharding visualizer
-```
+distributed-systems-playground/
+├── src/
+│   ├── components/
+│   │   ├── DashboardLayout.tsx    # Main layout with tabs
+│   │   ├── Heartbeat.tsx          # Health monitoring widget
+│   │   ├── LiveLogs.tsx           # Activity feed
+│   │   ├── LoadBalancerTab.tsx    # LB UI with kill/restore
+│   │   ├── ReplicationTab.tsx     # Active/Passive UI
+│   │   └── ShardingTab.tsx        # Range/Hash visualizer
+│   ├── hooks/
+│   │   ├── useClusterSimulation.ts # Server state management
+│   │   └── useFaultTolerantRequest.ts # Circuit Breaker + Retry
+│   ├── utils/
+│   │   ├── loadBalancer.ts        # RR, Least-Conn, P2C algorithms
+│   │   ├── logger.ts              # Centralized logging bus
+│   │   └── sharding.ts            # Consistent Hashing + Range
+│   ├── routes/
+│   │   ├── __root.tsx             # TanStack Router root
+│   │   └── index.tsx              # Home route
+│   └── styles.css                 # Global styles + animations
+├── package.json
+├── tsconfig.json
+├── tailwind.config.js
+├── vite.config.ts
+└── README.md
