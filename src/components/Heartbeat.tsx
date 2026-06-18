@@ -1,9 +1,27 @@
+import { useEffect, useState } from "react";
 import { useClusterSimulation } from "@/hooks/useClusterSimulation";
 
 export function Heartbeat() {
   const servers = useClusterSimulation();
+  const [isAlive, setIsAlive] = useState(true);
+
+  useEffect(() => {
+    // Simulate a health check ping every 5 seconds
+    const interval = setInterval(() => {
+      // 90% success rate to simulate real network jitter / health check failures
+      const pingSuccess = Math.random() < 0.9;
+      setIsAlive(pingSuccess);
+    }, 5000);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, []);
+
   const active = servers.filter((s) => s.healthy).length;
-  const ok = active === servers.length;
+  // Cluster is healthy if all servers are healthy AND the last ping succeeded
+  const ok = active === servers.length && isAlive;
+
   return (
     <div className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-border bg-card/60 backdrop-blur">
       <span

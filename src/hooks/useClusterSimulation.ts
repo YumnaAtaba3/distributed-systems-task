@@ -3,16 +3,17 @@ import { useEffect, useState } from "react";
 export type Server = {
   id: string;
   name: string;
-  load: number; // 0-100 CPU
+  baseLoad: number; // base CPU before active connections load (static)
+  load: number; // current CPU load (base + connection load + minor jitter)
   connections: number; // active connections (for Least Connections)
   requests: number; // total handled
   healthy: boolean;
 };
 
 const initial: Server[] = [
-  { id: "A", name: "Server A", load: 20, connections: 0, requests: 0, healthy: true },
-  { id: "B", name: "Server B", load: 55, connections: 0, requests: 0, healthy: true },
-  { id: "C", name: "Server C", load: 35, connections: 0, requests: 0, healthy: true },
+  { id: "A", name: "Server A", baseLoad: 15, load: 15, connections: 0, requests: 0, healthy: true },
+  { id: "B", name: "Server B", baseLoad: 45, load: 45, connections: 0, requests: 0, healthy: true },
+  { id: "C", name: "Server C", baseLoad: 25, load: 25, connections: 0, requests: 0, healthy: true },
 ];
 
 // Module-level state so the simulation survives tab switches.
@@ -26,15 +27,15 @@ function emit() {
 
 function ensureTimer() {
   if (timer) return;
-  // Drift CPU loads randomly every 2s — simulates real cluster jitter.
+  // Simulates minor background CPU jitter (±1) without changing baseLoad itself.
   timer = setInterval(() => {
     servers = servers.map((s) => {
-      const drift = (Math.random() - 0.5) * 25;
-      const next = Math.max(5, Math.min(98, s.load + drift));
-      return { ...s, load: Math.round(next) };
+      const jitter = (Math.random() - 0.5) * 2; // tiny jitter between -1 and +1
+      const nextLoad = Math.max(5, Math.min(99, s.baseLoad + s.connections * 12 + jitter));
+      return { ...s, load: Math.round(nextLoad) };
     });
     emit();
-  }, 2000);
+  }, 1000);
 }
 
 export function updateServers(updater: (s: Server[]) => Server[]) {
