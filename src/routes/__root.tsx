@@ -103,6 +103,7 @@ function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <head>
+        <base href="/" />
         <HeadContent />
       </head>
       <body>
