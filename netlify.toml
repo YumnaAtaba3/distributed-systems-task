@@ -1,10 +1,10 @@
 [build]
   command = "bun run build"
-  publish = "dist"
+  publish = "dist/client"
 
 [[redirects]]
   from = "/*"
-  to = "/index.html"
+  to = "/.netlify/functions/server"
   status = 200
 
 [[headers]]
